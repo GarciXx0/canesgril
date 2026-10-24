@@ -33,6 +33,7 @@ INSTALLED_APPS = [
     'churras',
     'corsheaders', #Acrescenta CORS no deploy
     'whitenoise.runserver_nostatic'
+    'corsheaders',
 ]
 
 MIDDLEWARE = [
@@ -45,6 +46,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'corsheaders.middleware.CorsMiddleware' #Acrescenta CORS no deploy
+    'corsheaders.middleware.CorsMiddleware'
 ]
 
 APP_USE_HTTPS = config('APP_USE_HTTPS', default=False, cast=bool)
