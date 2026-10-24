@@ -1,56 +1,45 @@
-import os
 from pathlib import Path
-from decouple import config
+import os
+from decouple import config, Csv
+from urllib.parse import urlparse, parse_qsl
 import cloudinary
-import cloudinary.uploader
-import cloudinary.api
-import dj_database_url
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# SEGURANÇA: Chaves agora são lidas do arquivo .env
-SECRET_KEY = config('SECRET_KEY')
 
-# ALTERADO: Em produção (quando não houver variável DEBUG no .env do servidor), o padrão será False.
-DEBUG = config('DEBUG', default=False, cast=bool)
+# Quick-start development settings - unsuitable for production
+# See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
-# ALTERADO: Em produção, permitimos que a plataforma hospede o domínio. No Render, geralmente é *.onrender.com
+# SECURITY WARNING: keep the secret key used in production secret!
+SECRET_KEY = config('SECRET_KEY', default='chave-super-secreta', cast=str)
+
+# SECURITY WARNING: don't run with debug turned on in production!
+DEBUG = config('APP_DEVELOPMENT', default=False, cast=bool)
+
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='127.0.0.1,localhost', cast=Csv())
 
-APP_USE_HTTPS = config('APP_USE_HTTPS', default=False, cast=bool)
-
-protocol = 'https' if APP_USE_HTTPS else 'http'
-
-CORS_ALLOWED_ORIGINS = [
-    f'{protocol}://{host}' for host in ALLOWED_HOSTS
-]
-
 # Application definition
+
 INSTALLED_APPS = [
-    'django.contrib.admin',
+    'django.contrib.admin', 
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
-    # ALTERADO: WhiteNoise requer o app de staticfiles para funcionar corretamente na coleta
-    'whitenoise.runserver_nostatic',
     'django.contrib.staticfiles',
-    
- 
- 
-    
-    # Terceiros
+    'rest_framework',
+    'rest_framework_simplejwt',
+    'rest_framework.authtoken',
     'cloudinary',
-    
-    # Apps Locais
-    'churras',
     'usuarios',
+    'churras',
+    'corsheaders', #Acrescenta CORS no deploy
+    'whitenoise.runserver_nostatic'
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    # ALTERADO: WhiteNoise DEVE ser o segundo middleware, logo após a segurança
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -58,7 +47,16 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'corsheaders.middleware.CorsMiddleware' #Acrescenta CORS no deploy
 ]
+
+APP_USE_HTTPS = config('APP_USE_HTTPS', default=False, cast=bool)
+
+protocol = 'https' if APP_USE_HTTPS else 'http'
+
+CORS_ALLOWED_ORIGINS = [
+    f'{protocol}://{host}' for host in ALLOWED_HOSTS
+] #Acrescenta CORS no deploy
 
 ROOT_URLCONF = 'canesgril.urls'
 
@@ -79,45 +77,95 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'canesgril.wsgi.application'
 
+
+# Database
+# https://docs.djangoproject.com/en/6.1/ref/settings/#databases
+
+tmpPostgres = urlparse(config("DATABASE_URL", default='postgresql://usuario:senha@servidor:5432/banco?sslmode=require&channel_binding=require', cast=str)) # type: ignore
+
 DATABASES = {
-    'default': dj_database_url.config(
-        default=config('DATABASE_URL'),
-        conn_max_age=600,
-        conn_health_checks=True,
-    )
+    #'default': {
+    #    'ENGINE': 'django.db.backends.sqlite3',
+    #    'NAME': BASE_DIR / 'db.sqlite3',
+    #}
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': tmpPostgres.path.replace('/', ''),
+        'USER': tmpPostgres.username,
+        'PASSWORD': tmpPostgres.password,
+        'HOST': tmpPostgres.hostname,
+        'PORT': tmpPostgres.port,
+        'OPTIONS': dict(parse_qsl(tmpPostgres.query))
+    }
 }
 
+
+# Password validation
+# https://docs.djangoproject.com/en/6.1/ref/settings/#auth-password-validators
+
 AUTH_PASSWORD_VALIDATORS = [
-    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',},
-    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',},
-    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',},
-    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',},
+    {
+        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+    },
 ]
 
-LANGUAGE_CODE = 'pt-br'
-TIME_ZONE = 'America/Sao_Paulo'
+
+# Internationalization
+# https://docs.djangoproject.com/en/6.1/topics/i18n/
+
+LANGUAGE_CODE = config('APP_LOCALE', default='pt-br', cast=str)
+
+TIME_ZONE = config('APP_TIMEZONE', default='America/Sao_Paulo', cast=str)
+
 USE_I18N = True
+
 USE_TZ = True
 
-# ==========================================
-# ARQUIVOS ESTÁTICOS E WHITENOISE
-# ==========================================
-STATIC_URL = '/static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 
-# ALTERADO: Habilita compressão e cache agressivo (Brotli/Gzip) para os estáticos no WhiteNoise
+# Static files (CSS, JavaScript, Images)
+# https://docs.djangoproject.com/en/6.1/howto/static-files/
+
+STATIC_URL = 'static/'
+
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'static')
+]
+
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-# Configuração do Cloudinary
+# Configuração do Cloudinary consumindo o .env
 cloudinary.config( 
-  cloud_name = config('CLOUD_NAME'), 
-  api_key = config('API_KEY'), 
-  api_secret = config('API_SECRET') 
+  cloud_name = config('CLOUDINARY_CLOUD_NAME', default='', cast=str), 
+  api_key = config('CLOUDINARY_API_KEY', default='', cast=str), 
+  api_secret = config('CLOUDINARY_API_SECRET', default='', cast=str) 
 )
+
+# Email
+# https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
 
 MAILERS = {
     'default': {
         'BACKEND': 'django.core.mail.backends.console.EmailBackend',
     },
+}
+
+#AUTH_USER_MODEL = 'usuarios.User'
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        #'rest_framework.authentication.TokenAuthentication',
+        #'rest_framework.authentication.SessionAuthentication',
+        'rest_framework_simplejwt.authentication.JWTAuthentication'
+    ],
 }
