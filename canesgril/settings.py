@@ -32,7 +32,7 @@ INSTALLED_APPS = [
     'usuarios',
     'churras',
     'corsheaders', #Acrescenta CORS no deploy
-    'whitenoise.runserver_nostatic'
+    'whitenoise.runserver_nostatic',
     'corsheaders',
 ]
 
