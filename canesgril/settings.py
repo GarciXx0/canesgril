@@ -16,7 +16,15 @@ SECRET_KEY = config('SECRET_KEY')
 DEBUG = config('DEBUG', default=False, cast=bool)
 
 # ALTERADO: Em produção, permitimos que a plataforma hospede o domínio. No Render, geralmente é *.onrender.com
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='127.0.0.1,localhost', cast=Csv())
+
+APP_USE_HTTPS = config('APP_USE_HTTPS', default=False, cast=bool)
+
+protocol = 'https' if APP_USE_HTTPS else 'http'
+
+CORS_ALLOWED_ORIGINS = [
+    f'{protocol}://{host}' for host in ALLOWED_HOSTS
+]
 
 # Application definition
 INSTALLED_APPS = [
