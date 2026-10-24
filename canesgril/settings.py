@@ -33,7 +33,6 @@ INSTALLED_APPS = [
     'churras',
     'corsheaders', #Acrescenta CORS no deploy
     'whitenoise.runserver_nostatic',
-    'corsheaders',
 ]
 
 MIDDLEWARE = [
